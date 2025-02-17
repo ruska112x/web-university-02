@@ -1,0 +1,24 @@
+@startuml scheme
+allow_mixing
+
+scale max 1920 width
+scale max 1080 height
+
+left to right direction
+top to bottom direction
+
+package \"Database" {
+    entity User {
+        *user_id : int
+        --
+        *username : varchar(255)
+    }
+
+    entity Score {
+        *score_id : int
+        --
+        *value : int
+    }
+
+    User ||..|{ Score
+}
