@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>2048</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #faf8ef;
+      margin: 0;
+      padding: 0;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    nav {
+      background: #bbada0;
+      padding: 10px;
+      text-align: center;
+    }
+
+    nav button {
+      margin: 0 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #8f7a66;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    nav button:hover {
+      background: #9f8b76;
+    }
+
+    #gamePage {
+      max-width: 400px;
+      margin: 20px auto;
+    }
+
+    #gameInfo {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    #scoreDisplay {
+      font-size: 18px;
+      margin-right: 10px;
+    }
+
+    #restartBtn {
+      padding: 5px 10px;
+      font-size: 16px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, 80px);
+      grid-gap: 10px;
+      justify-content: center;
+      margin: 0 auto;
+    }
+
+    .cell {
+      width: 80px;
+      height: 80px;
+      background: #cdc1b4;
+      font-size: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      font-weight: bold;
+      color: #776e65;
+    }
+
+    #gameOver {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    #gameOver input {
+      padding: 5px;
+      font-size: 16px;
+      margin-right: 5px;
+    }
+
+    #leaderboardPage,
+    #userScoresPage {
+      max-width: 400px;
+      margin: 20px auto;
+      text-align: center;
+    }
+
+    #leaderboardList,
+    #userScoresList {
+      list-style-type: none;
+      padding: 0;
+    }
+
+    #leaderboardList li,
+    #userScoresList li {
+      background: #eee;
+      margin: 5px 0;
+      padding: 8px;
+      border-radius: 3px;
+    }
+
+    #userScoresPage input {
+      padding: 5px;
+      font-size: 16px;
+      width: 150px;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav>
+    <button onclick="showPage('gamePage')">Game</button>
+    <button onclick="showPage('leaderboardPage')">Leaderboard</button>
+    <button onclick="showPage('userScoresPage')">User Scores</button>
+  </nav>
+
+  <div id="gamePage">
+    <h2>2048 Game</h2>
+    <div id="gameInfo">
+      <span id="scoreDisplay">Score: 0</span>
+      <button id="restartBtn">Restart</button>
+    </div>
+    <div id="gameBoard" class="board"></div>
+    <div id="gameOver" style="display: none;">
+      <h3>Game Over! Your score: <span id="finalScore"></span></h3>
+      <input type="text" id="usernameInput" placeholder="Enter your username" />
+      <button id="saveScoreBtn">Save Score</button>
+    </div>
+  </div>
+
+  <div id="leaderboardPage" style="display: none;">
+    <h2>Leaderboard</h2>
+    <button id="refreshLeaderboardBtn">Refresh Leaderboard</button>
+    <ul id="leaderboardList"></ul>
+  </div>
+
+  <div id="userScoresPage" style="display: none;">
+    <h2>User Scores</h2>
+    <input id="userIdInput" placeholder="Enter username" />
+    <button id="fetchUserScoresBtn">Fetch Scores</button>
+    <ul id="userScoresList"></ul>
+  </div>
+
+  <script>
+    function showPage(pageId) {
+      document.getElementById('gamePage').style.display = (pageId === 'gamePage') ? 'block' : 'none';
+      document.getElementById('leaderboardPage').style.display = (pageId === 'leaderboardPage') ? 'block' : 'none';
+      document.getElementById('userScoresPage').style.display = (pageId === 'userScoresPage') ? 'block' : 'none';
+    }
+
+    const size = 4;
+    let board = [];
+    let score = 0;
+
+    function initGame() {
+      board = Array(size).fill().map(() => Array(size).fill(0));
+      score = 0;
+      addRandomTile();
+      addRandomTile();
+      drawBoard();
+      updateScore();
+      document.getElementById('gameOver').style.display = 'none';
+    }
+
+    function addRandomTile() {
+      let emptyCells = [];
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          if (board[i][j] === 0) {
+            emptyCells.push({ i, j });
+          }
+        }
+      }
+      if (emptyCells.length === 0) return;
+      const randCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      board[randCell.i][randCell.j] = Math.random() < 0.9 ? 2 : 4;
+    }
+
+    function drawBoard() {
+      const boardDiv = document.getElementById('gameBoard');
+      boardDiv.innerHTML = '';
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.textContent = board[i][j] === 0 ? '' : board[i][j];
+          boardDiv.appendChild(cell);
+        }
+      }
+    }
+
+    function updateScore() {
+      document.getElementById('scoreDisplay').textContent = 'Score: ' + score;
+    }
+
+    document.addEventListener('keydown', handleKey);
+    function handleKey(e) {
+      if (document.getElementById('gameOver').style.display === 'block') return;
+      let moved = false;
+      if (e.key === 'ArrowLeft') moved = moveLeft();
+      else if (e.key === 'ArrowRight') moved = moveRight();
+      else if (e.key === 'ArrowUp') moved = moveUp();
+      else if (e.key === 'ArrowDown') moved = moveDown();
+
+      if (moved) {
+        addRandomTile();
+        drawBoard();
+        updateScore();
+        if (checkGameOver()) {
+          endGame();
+        }
+      }
+    }
+
+    function slide(row) {
+      let arr = row.filter(val => val !== 0);
+      for (let i = 0; i < arr.length - 1; i++) {
+        if (arr[i] === arr[i + 1]) {
+          arr[i] *= 2;
+          score += arr[i];
+          arr[i + 1] = 0;
+        }
+      }
+      arr = arr.filter(val => val !== 0);
+      while (arr.length < size) {
+        arr.push(0);
+      }
+      return arr;
+    }
+
+    function arraysEqual(a, b) {
+      return a.length === b.length && a.every((val, index) => val === b[index]);
+    }
+
+    function moveLeft() {
+      let moved = false;
+      for (let i = 0; i < size; i++) {
+        const originalRow = board[i].slice();
+        const newRow = slide(board[i]);
+        board[i] = newRow;
+        if (!arraysEqual(originalRow, newRow)) moved = true;
+      }
+      return moved;
+    }
+
+    function moveRight() {
+      let moved = false;
+      for (let i = 0; i < size; i++) {
+        const originalRow = board[i].slice();
+        const reversed = board[i].slice().reverse();
+        const newRow = slide(reversed).reverse();
+        board[i] = newRow;
+        if (!arraysEqual(originalRow, newRow)) moved = true;
+      }
+      return moved;
+    }
+
+    function moveUp() {
+      let moved = false;
+      for (let j = 0; j < size; j++) {
+        let col = [];
+        for (let i = 0; i < size; i++) {
+          col.push(board[i][j]);
+        }
+        const originalCol = col.slice();
+        const newCol = slide(col);
+        for (let i = 0; i < size; i++) {
+          board[i][j] = newCol[i];
+        }
+        if (!arraysEqual(originalCol, newCol)) moved = true;
+      }
+      return moved;
+    }
+
+    function moveDown() {
+      let moved = false;
+      for (let j = 0; j < size; j++) {
+        let col = [];
+        for (let i = 0; i < size; i++) {
+          col.push(board[i][j]);
+        }
+        const originalCol = col.slice();
+        const reversed = col.slice().reverse();
+        const newCol = slide(reversed).reverse();
+        for (let i = 0; i < size; i++) {
+          board[i][j] = newCol[i];
+        }
+        if (!arraysEqual(originalCol, newCol)) moved = true;
+      }
+      return moved;
+    }
+
+    function checkGameOver() {
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+          if (board[i][j] === 0) return false;
+        }
+      }
+      for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size - 1; j++) {
+          if (board[i][j] === board[i][j + 1]) return false;
+        }
+      }
+      for (let j = 0; j < size; j++) {
+        for (let i = 0; i < size - 1; i++) {
+          if (board[i][j] === board[i + 1][j]) return false;
+        }
+      }
+      return true;
+    }
+
+    function endGame() {
+      document.getElementById('gameOver').style.display = 'block';
+      document.getElementById('finalScore').textContent = score;
+    }
+
+    document.getElementById('restartBtn').addEventListener('click', initGame);
+
+    document.getElementById('saveScoreBtn').addEventListener('click', function () {
+      const username = document.getElementById('usernameInput').value.trim();
+      if (!username) {
+        alert("Please enter a username");
+        return;
+      }
+      fetch('http://localhost:8080/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: username, score: score })
+      })
+        .then(response => {
+          if (response.ok) {
+            alert("Score saved successfully!");
+          } else {
+            alert("Error saving score.");
+          }
+        })
+        .catch(() => alert("Error saving score."));
+    });
+
+    document.getElementById('refreshLeaderboardBtn').addEventListener('click', function () {
+      fetch('http://localhost:8080/leaderboard')
+        .then(response => response.json())
+        .then(data => {
+          const leaderboardList = document.getElementById('leaderboardList');
+          leaderboardList.innerHTML = '';
+          data.forEach(entry => {
+            const li = document.createElement('li');
+            li.textContent = `${entry.username}: ${entry.maxScore}`;
+            leaderboardList.appendChild(li);
+          });
+        })
+        .catch(() => alert("Error fetching leaderboard."));
+    });
+
+    document.getElementById('fetchUserScoresBtn').addEventListener('click', function () {
+      const username = document.getElementById('userIdInput').value;
+      if (!username) {
+        alert("Please enter a user ID");
+        return;
+      }
+      fetch('http://localhost:8080/users/' + username + '/scores')
+        .then(response => {
+          if (response.status === 404) {
+            throw new Error("User not found");
+          }
+          return response.json();
+        })
+        .then(data => {
+          const userScoresList = document.getElementById('userScoresList');
+          userScoresList.innerHTML = '';
+          data.forEach(scoreObj => {
+            const li = document.createElement('li');
+            li.textContent = scoreObj.value;
+            userScoresList.appendChild(li);
+          });
+        })
+        .catch(err => alert(err.message));
+    });
+
+    initGame();
+    showPage('gamePage');
+  </script>
+</body>
+
+</html>

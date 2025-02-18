@@ -18,9 +18,11 @@ class UserController(
 ) {
     @PostMapping("/users")
     fun addUser(@RequestBody user: UserDto) {
-        val userToSave = User(id = null, username = user.username)
-        userToSave.addScore(Score(id = null, value = user.score))
-        userRepository.save(userToSave)
+        val userFromRepository = userRepository.findByUsername(user.username).getOrElse {
+            val userToSave = User(id = null, username = user.username)
+            userRepository.save(userToSave)
+        }
+        scoreRepository.save(Score(id = null, value = user.score, user = userFromRepository))
     }
 
     @Transactional
@@ -35,9 +37,9 @@ class UserController(
         return ResponseEntity.created(location).build()
     }
 
-    @GetMapping("/users/{id}/scores")
-    fun getScoresByUser(@PathVariable id: Int): ResponseEntity<List<Score>> {
-        val user = userRepository.findById(id).getOrElse {
+    @GetMapping("/users/{username}/scores")
+    fun getScoresByUser(@PathVariable username: String): ResponseEntity<List<Score>> {
+        val user = userRepository.findByUsername(username).getOrElse {
             return ResponseEntity.notFound().build()
         }
         return ResponseEntity.ok(user.scores)
