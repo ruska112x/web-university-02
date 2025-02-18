@@ -1,4 +1,4 @@
 # web-university-02
 
 ## 2048 game
-Frontend on React+TS, Backend on Kotlin+Spring, DataBase is PostgreSQL
+Frontend on HTML+JS+CSS, Backend on Kotlin+Spring, DataBase is PostgreSQL
